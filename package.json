@@ -1,0 +1,37 @@
+{
+  "name": "metaledger",
+  "version": "0.1.0",
+  "description": "An opinionated, graph-based frontend to Ledger with added personal finance tools",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yousefamar/metaledger.git"
+  },
+  "keywords": [
+    "ledger",
+    "personal",
+    "finance",
+    "frontend",
+    "front",
+    "end",
+    "UI",
+    "GUI",
+    "budget",
+    "budgeting",
+    "accounting",
+    "money",
+    "management"
+  ],
+  "author": "Yousef Amar <yousef@amar.io> (http://yousefamar.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yousefamar/metaledger/issues"
+  },
+  "homepage": "https://github.com/yousefamar/metaledger#readme",
+  "dependencies": {
+    "ledger-cli": "^0.2.0"
+  }
+}
