@@ -4,7 +4,9 @@
   "description": "An opinionated, graph-based frontend to Ledger with added personal finance tools",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "lsc -c server.ls && lsc -co www www && pug -o www www",
+    "watch": "lsc -cw server.ls & lsc -cwo www www & pug -wo www www",
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -32,6 +34,12 @@
   },
   "homepage": "https://github.com/yousefamar/metaledger#readme",
   "dependencies": {
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
     "ledger-cli": "^0.2.0"
+  },
+  "devDependencies": {
+    "livescript": "^1.5.0",
+    "pug-cli": "^1.0.0-alpha6"
   }
 }
