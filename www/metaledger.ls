@@ -41,14 +41,33 @@ transactions-to-graph = ->
 
 
 $ !->
-  svg = d3.select \svg
-  width  = +svg.attr \width
-  height = +svg.attr \height
+  svg = d3.select \body
+    .style \margin  0
+    .style \padding 0
+    .style \width   \100%
+    .style \height  \100%
+    .style \overflow \hidden
+    .append \svg:svg
+    .style \background-color \#030c22
+
+  width  = window.inner-width
+  height = window.inner-height
+
+  window.add-event-listener \resize onresize = !->
+    width  := window.inner-width
+    height := window.inner-height
+    svg
+      .attr \width  width
+      .attr \height height
+    simulation
+      ..force \center d3.force-center 0.5 * width, 0.5 * height
+      ..restart!
 
   simulation = d3.force-simulation!
     .force \link d3.force-link!.id -> it.id
-    .force \charge d3.force-many-body!.strength -> -200 * it.radius
-    .force \center d3.force-center 0.5 * width, 0.5 * height
+    .force \charge d3.force-many-body!.strength -> -100 * it.radius
+
+  onresize!
 
   <-! $.get \/transactions {}
   graph = transactions-to-graph it
@@ -63,7 +82,7 @@ $ !->
     .enter!.append \svg:marker
       .attr \id String
       .attr \viewBox '0 -5 10 10'
-      .attr \refX 12
+      .attr \refX 11
       .attr \markerWidth 6
       .attr \markerHeight 6
       .attr \orient \auto
@@ -104,8 +123,12 @@ $ !->
     ..append \text
       .attr \dx 12
       .attr \dy \.35em
-      .style \font-size 8
-      .text -> it.id + ' ' + it.balance[\£].to-fixed 2
+      .text -> it.id
+    ..append \text
+      .attr \class \balance
+      .attr \dy -> 0.5 * it.radius
+      .attr \text-anchor \middle
+      .text -> it.balance[\£].to-fixed 2
 
   simulation
     ..nodes graph.nodes

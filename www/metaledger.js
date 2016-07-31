@@ -44,15 +44,25 @@
     };
   };
   $(function(){
-    var svg, width, height, simulation;
-    svg = d3.select('svg');
-    width = +svg.attr('width');
-    height = +svg.attr('height');
+    var svg, width, height, onresize, simulation;
+    svg = d3.select('body').style('margin', 0).style('padding', 0).style('width', '100%').style('height', '100%').style('overflow', 'hidden').append('svg:svg').style('background-color', '#030c22');
+    width = window.innerWidth;
+    height = window.innerHeight;
+    window.addEventListener('resize', onresize = function(){
+      var x$;
+      width = window.innerWidth;
+      height = window.innerHeight;
+      svg.attr('width', width).attr('height', height);
+      x$ = simulation;
+      x$.force('center', d3.forceCenter(0.5 * width, 0.5 * height));
+      x$.restart();
+    });
     simulation = d3.forceSimulation().force('link', d3.forceLink().id(function(it){
       return it.id;
     })).force('charge', d3.forceManyBody().strength(function(it){
-      return -200 * it.radius;
-    })).force('center', d3.forceCenter(0.5 * width, 0.5 * height));
+      return -100 * it.radius;
+    }));
+    onresize();
     $.get('/transactions', {}, function(it){
       var graph, link, node, x$, y$;
       graph = transactionsToGraph(it);
@@ -62,7 +72,7 @@
           ? 'green'
           : it.balance['£'] < 0 ? 'red' : '#ccc';
       });
-      svg.append('svg:defs').selectAll('marker').data(['end']).enter().append('svg:marker').attr('id', String).attr('viewBox', '0 -5 10 10').attr('refX', 12).attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto').append('svg:path').attr('d', 'M0,-5L10,0L0,5');
+      svg.append('svg:defs').selectAll('marker').data(['end']).enter().append('svg:marker').attr('id', String).attr('viewBox', '0 -5 10 10').attr('refX', 11).attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto').append('svg:path').attr('d', 'M0,-5L10,0L0,5');
       link = svg.append('svg:g').selectAll('path').data(graph.links).enter().append('svg:path').attr('class', 'link').attr('marker-end', 'url(#end)');
       node = svg.append('svg:g').attr('class', 'nodes').selectAll('circle').data(graph.nodes).enter().append('g').attr('class', 'node');
       x$ = node;
@@ -87,8 +97,13 @@
       }).attr('fill', function(it){
         return it.color;
       });
-      x$.append('text').attr('dx', 12).attr('dy', '.35em').style('font-size', 8).text(function(it){
-        return it.id + ' ' + it.balance['£'].toFixed(2);
+      x$.append('text').attr('dx', 12).attr('dy', '.35em').text(function(it){
+        return it.id;
+      });
+      x$.append('text').attr('class', 'balance').attr('dy', function(it){
+        return 0.5 * it.radius;
+      }).attr('text-anchor', 'middle').text(function(it){
+        return it.balance['£'].toFixed(2);
       });
       y$ = simulation;
       y$.nodes(graph.nodes).on('tick', function(){
