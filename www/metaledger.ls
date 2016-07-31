@@ -1,8 +1,6 @@
 transactions-to-graph = ->
   accounts = {}
   flows    = {}
-  nodes = []
-  links = []
 
   for transaction in it
     # TODO: Support more than two postings
@@ -15,22 +13,29 @@ transactions-to-graph = ->
       source = target
       target = temp
 
-    #accounts{}[
-    accounts[source.account] = {}
-    accounts[target.account] = {}
+    accounts{}[source.account]
+      ..id = source.account
+      ..{}balance[source.commodity.currency] ||= 0
+      ..balance[source.commodity.currency] += source.commodity.value
 
-    #source.{}balance[postings[0].commodity.currency] ||= 0
-    #source.balance += postings[0]
-    #children = node.{}children
-    unless flows["#{source.account}\n#{target.account}"]?
-      links.push do
-        source: source.account
-        target: target.account
+    accounts{}[target.account]
+      ..id = target.account
+      ..{}balance[target.commodity.currency] ||= 0
+      ..balance[target.commodity.currency] += target.commodity.value
 
-      flows["#{source.account}\n#{target.account}"] = {}
+    flows{}["#{source.account}\n#{target.account}"]
+      ..source = source.account
+      ..target = target.account
+      ..{}sum[source.commodity.currency] ||= 0
+      ..sum[source.commodity.currency] += source.commodity.value
 
-  for k, v of accounts
-    nodes.push id: k
+  nodes = []
+  for ,v of accounts
+    nodes.push v
+
+  links = []
+  for ,v of flows
+    links.push v
 
   { nodes, links }
 
@@ -42,11 +47,15 @@ $ !->
 
   simulation = d3.force-simulation!
     .force \link d3.force-link!.id -> it.id
-    .force \charge d3.force-many-body!.strength -1000
+    .force \charge d3.force-many-body!.strength -> -200 * it.radius
     .force \center d3.force-center 0.5 * width, 0.5 * height
 
   <-! $.get \/transactions {}
   graph = transactions-to-graph it
+
+  graph.nodes.for-each ->
+    it.radius = Math.max 5 Math.sqrt Math.abs 0.1 * it.balance[\£]
+    it.color  = if it.balance[\£] > 0 then \green else if it.balance[\£] < 0 then \red else \#ccc
 
   svg.append \svg:defs
     .select-all \marker
@@ -54,8 +63,7 @@ $ !->
     .enter!.append \svg:marker
       .attr \id String
       .attr \viewBox '0 -5 10 10'
-      .attr \refX 15
-      .attr \refY -1.5
+      .attr \refX 12
       .attr \markerWidth 6
       .attr \markerHeight 6
       .attr \orient \auto
@@ -91,13 +99,13 @@ $ !->
         it.fy = null
     )
     ..append \circle
-      .attr \r 5
-      .attr \fill \red
+      .attr \r -> it.radius
+      .attr \fill -> it.color
     ..append \text
       .attr \dx 12
       .attr \dy \.35em
       .style \font-size 8
-      .text -> it.id
+      .text -> it.id + ' ' + it.balance[\£].to-fixed 2
 
   simulation
     ..nodes graph.nodes
@@ -106,7 +114,12 @@ $ !->
           dx = it.target.x - it.source.x
           dy = it.target.y - it.source.y
           dr = Math.sqrt (dx * dx + dy * dy)
-          "M#{it.source.x},#{it.source.y}A#dr,#dr 0 0,1 #{it.target.x},#{it.target.y}"
+          source-offset-x =  dx * it.source.radius / dr
+          source-offset-y =  dy * it.source.radius / dr
+          target-offset-x = -dx * it.target.radius / dr
+          target-offset-y = -dy * it.target.radius / dr
+          # TODO: "End" line at node center
+          "M#{it.source.x + source-offset-x},#{it.source.y + source-offset-y}A#dr,#dr -1 0,1 #{it.target.x + target-offset-x},#{it.target.y + target-offset-y}"
 
         node.attr \transform -> "translate(#{it.x}, #{it.y})"
     ..force \link

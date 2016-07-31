@@ -2,11 +2,9 @@
 (function(){
   var transactionsToGraph;
   transactionsToGraph = function(it){
-    var accounts, flows, nodes, links, i$, len$, transaction, source, target, temp, k, v;
+    var accounts, flows, i$, len$, transaction, source, target, temp, x$, key$, ref$, y$, z$, nodes, v, links;
     accounts = {};
     flows = {};
-    nodes = [];
-    links = [];
     for (i$ = 0, len$ = it.length; i$ < len$; ++i$) {
       transaction = it[i$];
       source = transaction.postings[0];
@@ -16,21 +14,29 @@
         source = target;
         target = temp;
       }
-      accounts[source.account] = {};
-      accounts[target.account] = {};
-      if (flows[source.account + "\n" + target.account] == null) {
-        links.push({
-          source: source.account,
-          target: target.account
-        });
-        flows[source.account + "\n" + target.account] = {};
-      }
+      x$ = accounts[key$ = source.account] || (accounts[key$] = {});
+      x$.id = source.account;
+      (ref$ = x$.balance || (x$.balance = {}))[key$ = source.commodity.currency] || (ref$[key$] = 0);
+      x$.balance[source.commodity.currency] += source.commodity.value;
+      y$ = accounts[key$ = target.account] || (accounts[key$] = {});
+      y$.id = target.account;
+      (ref$ = y$.balance || (y$.balance = {}))[key$ = target.commodity.currency] || (ref$[key$] = 0);
+      y$.balance[target.commodity.currency] += target.commodity.value;
+      z$ = flows[key$ = source.account + "\n" + target.account] || (flows[key$] = {});
+      z$.source = source.account;
+      z$.target = target.account;
+      (ref$ = z$.sum || (z$.sum = {}))[key$ = source.commodity.currency] || (ref$[key$] = 0);
+      z$.sum[source.commodity.currency] += source.commodity.value;
     }
-    for (k in accounts) {
-      v = accounts[k];
-      nodes.push({
-        id: k
-      });
+    nodes = [];
+    for (i$ in accounts) {
+      v = accounts[i$];
+      nodes.push(v);
+    }
+    links = [];
+    for (i$ in flows) {
+      v = flows[i$];
+      links.push(v);
     }
     return {
       nodes: nodes,
@@ -44,11 +50,19 @@
     height = +svg.attr('height');
     simulation = d3.forceSimulation().force('link', d3.forceLink().id(function(it){
       return it.id;
-    })).force('charge', d3.forceManyBody().strength(-1000)).force('center', d3.forceCenter(0.5 * width, 0.5 * height));
+    })).force('charge', d3.forceManyBody().strength(function(it){
+      return -200 * it.radius;
+    })).force('center', d3.forceCenter(0.5 * width, 0.5 * height));
     $.get('/transactions', {}, function(it){
       var graph, link, node, x$, y$;
       graph = transactionsToGraph(it);
-      svg.append('svg:defs').selectAll('marker').data(['end']).enter().append('svg:marker').attr('id', String).attr('viewBox', '0 -5 10 10').attr('refX', 15).attr('refY', -1.5).attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto').append('svg:path').attr('d', 'M0,-5L10,0L0,5');
+      graph.nodes.forEach(function(it){
+        it.radius = Math.max(5, Math.sqrt(Math.abs(0.1 * it.balance['£'])));
+        return it.color = it.balance['£'] > 0
+          ? 'green'
+          : it.balance['£'] < 0 ? 'red' : '#ccc';
+      });
+      svg.append('svg:defs').selectAll('marker').data(['end']).enter().append('svg:marker').attr('id', String).attr('viewBox', '0 -5 10 10').attr('refX', 12).attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto').append('svg:path').attr('d', 'M0,-5L10,0L0,5');
       link = svg.append('svg:g').selectAll('path').data(graph.links).enter().append('svg:path').attr('class', 'link').attr('marker-end', 'url(#end)');
       node = svg.append('svg:g').attr('class', 'nodes').selectAll('circle').data(graph.nodes).enter().append('g').attr('class', 'node');
       x$ = node;
@@ -68,18 +82,26 @@
         it.fx = null;
         it.fy = null;
       }));
-      x$.append('circle').attr('r', 5).attr('fill', 'red');
+      x$.append('circle').attr('r', function(it){
+        return it.radius;
+      }).attr('fill', function(it){
+        return it.color;
+      });
       x$.append('text').attr('dx', 12).attr('dy', '.35em').style('font-size', 8).text(function(it){
-        return it.id;
+        return it.id + ' ' + it.balance['£'].toFixed(2);
       });
       y$ = simulation;
       y$.nodes(graph.nodes).on('tick', function(){
         link.attr('d', function(it){
-          var dx, dy, dr;
+          var dx, dy, dr, sourceOffsetX, sourceOffsetY, targetOffsetX, targetOffsetY;
           dx = it.target.x - it.source.x;
           dy = it.target.y - it.source.y;
           dr = Math.sqrt(dx * dx + dy * dy);
-          return "M" + it.source.x + "," + it.source.y + "A" + dr + "," + dr + " 0 0,1 " + it.target.x + "," + it.target.y;
+          sourceOffsetX = dx * it.source.radius / dr;
+          sourceOffsetY = dy * it.source.radius / dr;
+          targetOffsetX = -dx * it.target.radius / dr;
+          targetOffsetY = -dy * it.target.radius / dr;
+          return "M" + (it.source.x + sourceOffsetX) + "," + (it.source.y + sourceOffsetY) + "A" + dr + "," + dr + " -1 0,1 " + (it.target.x + targetOffsetX) + "," + (it.target.y + targetOffsetY);
         });
         node.attr('transform', function(it){
           return "translate(" + it.x + ", " + it.y + ")";
